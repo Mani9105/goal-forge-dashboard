@@ -31,17 +31,22 @@ const statusText: Record<Status, string> = {
   awaiting: "text-brand",
 };
 
+const navItems = ["Dashboard", "Agents", "History", "Settings"];
+
 function Dashboard() {
   const [run, setRun] = useState<GoalRun>(defaultRun);
   const [draft, setDraft] = useState("");
+  const [tasks, setTasks] = useState(defaultRun.tasks);
   const [approvals, setApprovals] = useState(defaultRun.approvals);
   const [decided, setDecided] = useState<string | null>(null);
+  const [activeNav, setActiveNav] = useState("Dashboard");
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!draft.trim()) return;
     const next = buildRun(draft);
     setRun(next);
+    setTasks(next.tasks);
     setApprovals(next.approvals);
     setDecided(null);
     setDraft("");
@@ -50,6 +55,17 @@ function Dashboard() {
   const decide = (id: string, verdict: string) => {
     setApprovals((a) => a.filter((x) => x.id !== id));
     setDecided(verdict);
+    setTasks((ts) =>
+      ts.map((t) =>
+        t.status === "awaiting" ? { ...t, status: verdict === "approved" ? "done" : "queued" } : t,
+      ),
+    );
+  };
+
+  const toggleTask = (id: string) => {
+    setTasks((ts) =>
+      ts.map((t) => (t.id === id ? { ...t, status: t.status === "done" ? "queued" : "done" } : t)),
+    );
   };
 
   return (
@@ -72,10 +88,20 @@ function Dashboard() {
             </div>
           </div>
           <nav className="hidden items-center gap-1 rounded-xl border border-line/60 bg-panel/40 p-1 lg:flex">
-            <span className="rounded-lg bg-panel/80 px-4 py-2 text-sm font-medium shadow-sm">Dashboard</span>
-            <span className="rounded-lg px-4 py-2 text-sm text-ink-soft hover:text-ink">Agents</span>
-            <span className="rounded-lg px-4 py-2 text-sm text-ink-soft hover:text-ink">History</span>
-            <span className="rounded-lg px-4 py-2 text-sm text-ink-soft hover:text-ink">Settings</span>
+            {navItems.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setActiveNav(item)}
+                className={
+                  activeNav === item
+                    ? "rounded-lg bg-panel/80 px-4 py-2 text-sm font-medium shadow-sm"
+                    : "rounded-lg px-4 py-2 text-sm text-ink-soft hover:text-ink"
+                }
+              >
+                {item}
+              </button>
+            ))}
           </nav>
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-2 rounded-full border border-mint/40 bg-mint/10 px-3 py-1.5 font-mono text-[11px] text-ink">
@@ -194,19 +220,26 @@ function Dashboard() {
             <section className="panel-glass rounded-2xl p-6">
               <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-soft">Tasks</h2>
               <ul className="mt-4 space-y-3 text-sm">
-                {run.tasks.map((t) => (
-                  <li key={t.id} className="flex items-center gap-3">
-                    {t.status === "done" ? (
-                      <span className="grid size-5 place-items-center rounded-md bg-mint/15 text-mint">✓</span>
-                    ) : (
-                      <span className="size-5 rounded-md border-2 border-brand/60" />
-                    )}
-                    <span className="flex-1">{t.title}</span>
-                    <span
-                      className={`font-mono text-[11px] ${t.status === "done" ? "text-ink-soft" : "text-brand"}`}
+                {tasks.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggleTask(t.id)}
+                      aria-pressed={t.status === "done"}
+                      className="flex w-full items-center gap-3 text-left"
                     >
-                      {t.status}
-                    </span>
+                      {t.status === "done" ? (
+                        <span className="grid size-5 place-items-center rounded-md bg-mint/15 text-mint">✓</span>
+                      ) : (
+                        <span className="size-5 rounded-md border-2 border-brand/60" />
+                      )}
+                      <span className="flex-1">{t.title}</span>
+                      <span
+                        className={`font-mono text-[11px] ${t.status === "done" ? "text-ink-soft" : "text-brand"}`}
+                      >
+                        {t.status}
+                      </span>
+                    </button>
                   </li>
                 ))}
               </ul>
