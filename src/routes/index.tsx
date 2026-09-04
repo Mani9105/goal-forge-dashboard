@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { buildRun, defaultRun, type GoalRun, type Status } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { defaultRun, type GoalRun, type Status } from "@/lib/mock-data";
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -41,18 +42,33 @@ function Dashboard() {
   const [decided, setDecided] = useState<string | null>(null);
   const [activeNav, setActiveNav] = useState("Dashboard");
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!draft.trim()) return;
-    const next = buildRun(draft);
+  const applyRun = (next: GoalRun, decision: string | null) => {
     setRun(next);
     setTasks(next.tasks);
     setApprovals(next.approvals);
-    setDecided(null);
-    setDraft("");
+    setDecided(decision);
   };
 
-  const decide = (id: string, verdict: string) => {
+  useEffect(() => {
+    let cancelled = false;
+    api.getRun().then(({ data }) => {
+      if (!cancelled) applyRun(data.run, data.decision);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const goal = draft.trim();
+    if (!goal) return;
+    setDraft("");
+    const { data } = await api.createGoal(goal);
+    applyRun(data.run, data.decision);
+  };
+
+  const decide = async (id: string, verdict: "approved" | "declined") => {
     setApprovals((a) => a.filter((x) => x.id !== id));
     setDecided(verdict);
     setTasks((ts) =>
@@ -60,12 +76,17 @@ function Dashboard() {
         t.status === "awaiting" ? { ...t, status: verdict === "approved" ? "done" : "queued" } : t,
       ),
     );
+    const { data } = await api.decideApproval(run, id, verdict);
+    applyRun(data.run, data.decision ?? verdict);
   };
 
-  const toggleTask = (id: string) => {
-    setTasks((ts) =>
-      ts.map((t) => (t.id === id ? { ...t, status: t.status === "done" ? "queued" : "done" } : t)),
-    );
+  const toggleTask = async (id: string) => {
+    const target = tasks.find((t) => t.id === id);
+    if (!target) return;
+    const status: Status = target.status === "done" ? "queued" : "done";
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status } : t)));
+    const { data } = await api.updateTask({ ...run, tasks }, id, status);
+    setTasks(data.run.tasks);
   };
 
   return (
