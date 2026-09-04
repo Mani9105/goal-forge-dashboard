@@ -31,17 +31,22 @@ const statusText: Record<Status, string> = {
   awaiting: "text-brand",
 };
 
+const navItems = ["Dashboard", "Agents", "History", "Settings"];
+
 function Dashboard() {
   const [run, setRun] = useState<GoalRun>(defaultRun);
   const [draft, setDraft] = useState("");
+  const [tasks, setTasks] = useState(defaultRun.tasks);
   const [approvals, setApprovals] = useState(defaultRun.approvals);
   const [decided, setDecided] = useState<string | null>(null);
+  const [activeNav, setActiveNav] = useState("Dashboard");
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!draft.trim()) return;
     const next = buildRun(draft);
     setRun(next);
+    setTasks(next.tasks);
     setApprovals(next.approvals);
     setDecided(null);
     setDraft("");
@@ -50,6 +55,17 @@ function Dashboard() {
   const decide = (id: string, verdict: string) => {
     setApprovals((a) => a.filter((x) => x.id !== id));
     setDecided(verdict);
+    setTasks((ts) =>
+      ts.map((t) =>
+        t.status === "awaiting" ? { ...t, status: verdict === "approved" ? "done" : "queued" } : t,
+      ),
+    );
+  };
+
+  const toggleTask = (id: string) => {
+    setTasks((ts) =>
+      ts.map((t) => (t.id === id ? { ...t, status: t.status === "done" ? "queued" : "done" } : t)),
+    );
   };
 
   return (
