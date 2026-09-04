@@ -88,10 +88,20 @@ function Dashboard() {
             </div>
           </div>
           <nav className="hidden items-center gap-1 rounded-xl border border-line/60 bg-panel/40 p-1 lg:flex">
-            <span className="rounded-lg bg-panel/80 px-4 py-2 text-sm font-medium shadow-sm">Dashboard</span>
-            <span className="rounded-lg px-4 py-2 text-sm text-ink-soft hover:text-ink">Agents</span>
-            <span className="rounded-lg px-4 py-2 text-sm text-ink-soft hover:text-ink">History</span>
-            <span className="rounded-lg px-4 py-2 text-sm text-ink-soft hover:text-ink">Settings</span>
+            {navItems.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setActiveNav(item)}
+                className={
+                  activeNav === item
+                    ? "rounded-lg bg-panel/80 px-4 py-2 text-sm font-medium shadow-sm"
+                    : "rounded-lg px-4 py-2 text-sm text-ink-soft hover:text-ink"
+                }
+              >
+                {item}
+              </button>
+            ))}
           </nav>
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-2 rounded-full border border-mint/40 bg-mint/10 px-3 py-1.5 font-mono text-[11px] text-ink">
