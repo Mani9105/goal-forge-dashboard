@@ -220,19 +220,26 @@ function Dashboard() {
             <section className="panel-glass rounded-2xl p-6">
               <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-soft">Tasks</h2>
               <ul className="mt-4 space-y-3 text-sm">
-                {run.tasks.map((t) => (
-                  <li key={t.id} className="flex items-center gap-3">
-                    {t.status === "done" ? (
-                      <span className="grid size-5 place-items-center rounded-md bg-mint/15 text-mint">✓</span>
-                    ) : (
-                      <span className="size-5 rounded-md border-2 border-brand/60" />
-                    )}
-                    <span className="flex-1">{t.title}</span>
-                    <span
-                      className={`font-mono text-[11px] ${t.status === "done" ? "text-ink-soft" : "text-brand"}`}
+                {tasks.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggleTask(t.id)}
+                      aria-pressed={t.status === "done"}
+                      className="flex w-full items-center gap-3 text-left"
                     >
-                      {t.status}
-                    </span>
+                      {t.status === "done" ? (
+                        <span className="grid size-5 place-items-center rounded-md bg-mint/15 text-mint">✓</span>
+                      ) : (
+                        <span className="size-5 rounded-md border-2 border-brand/60" />
+                      )}
+                      <span className="flex-1">{t.title}</span>
+                      <span
+                        className={`font-mono text-[11px] ${t.status === "done" ? "text-ink-soft" : "text-brand"}`}
+                      >
+                        {t.status}
+                      </span>
+                    </button>
                   </li>
                 ))}
               </ul>
