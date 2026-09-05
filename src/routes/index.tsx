@@ -41,34 +41,33 @@ function Dashboard() {
   const [approvals, setApprovals] = useState(defaultRun.approvals);
   const [decided, setDecided] = useState<string | null>(null);
   const [activeNav, setActiveNav] = useState("Dashboard");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const applyRun = (next: GoalRun, decision: string | null) => {
+  const applyRun = (next: GoalRun) => {
     setRun(next);
     setTasks(next.tasks);
     setApprovals(next.approvals);
-    setDecided(decision);
+    setDecided(null);
   };
-
-  useEffect(() => {
-    let cancelled = false;
-    api.getRun().then(({ data }) => {
-      if (!cancelled) applyRun(data.run, data.decision);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const goal = draft.trim();
-    if (!goal) return;
+    if (!goal || loading) return;
     setDraft("");
-    const { data } = await api.createGoal(goal);
-    applyRun(data.run, data.decision);
+    setLoading(true);
+    setError(null);
+    try {
+      applyRun(await api.generate(goal));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Goal generation failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const decide = async (id: string, verdict: "approved" | "declined") => {
+  const decide = (id: string, verdict: "approved" | "declined") => {
     setApprovals((a) => a.filter((x) => x.id !== id));
     setDecided(verdict);
     setTasks((ts) =>
@@ -76,17 +75,13 @@ function Dashboard() {
         t.status === "awaiting" ? { ...t, status: verdict === "approved" ? "done" : "queued" } : t,
       ),
     );
-    const { data } = await api.decideApproval(run, id, verdict);
-    applyRun(data.run, data.decision ?? verdict);
   };
 
-  const toggleTask = async (id: string) => {
+  const toggleTask = (id: string) => {
     const target = tasks.find((t) => t.id === id);
     if (!target) return;
     const status: Status = target.status === "done" ? "queued" : "done";
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status } : t)));
-    const { data } = await api.updateTask({ ...run, tasks }, id, status);
-    setTasks(data.run.tasks);
   };
 
   return (
