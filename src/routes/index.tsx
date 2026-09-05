@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { defaultRun, type GoalRun, type Status } from "@/lib/mock-data";
 import { api } from "@/lib/api";
 
@@ -41,34 +41,33 @@ function Dashboard() {
   const [approvals, setApprovals] = useState(defaultRun.approvals);
   const [decided, setDecided] = useState<string | null>(null);
   const [activeNav, setActiveNav] = useState("Dashboard");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const applyRun = (next: GoalRun, decision: string | null) => {
+  const applyRun = (next: GoalRun) => {
     setRun(next);
     setTasks(next.tasks);
     setApprovals(next.approvals);
-    setDecided(decision);
+    setDecided(null);
   };
-
-  useEffect(() => {
-    let cancelled = false;
-    api.getRun().then(({ data }) => {
-      if (!cancelled) applyRun(data.run, data.decision);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const goal = draft.trim();
-    if (!goal) return;
+    if (!goal || loading) return;
     setDraft("");
-    const { data } = await api.createGoal(goal);
-    applyRun(data.run, data.decision);
+    setLoading(true);
+    setError(null);
+    try {
+      applyRun(await api.generate(goal));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Goal generation failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const decide = async (id: string, verdict: "approved" | "declined") => {
+  const decide = (id: string, verdict: "approved" | "declined") => {
     setApprovals((a) => a.filter((x) => x.id !== id));
     setDecided(verdict);
     setTasks((ts) =>
@@ -76,17 +75,13 @@ function Dashboard() {
         t.status === "awaiting" ? { ...t, status: verdict === "approved" ? "done" : "queued" } : t,
       ),
     );
-    const { data } = await api.decideApproval(run, id, verdict);
-    applyRun(data.run, data.decision ?? verdict);
   };
 
-  const toggleTask = async (id: string) => {
+  const toggleTask = (id: string) => {
     const target = tasks.find((t) => t.id === id);
     if (!target) return;
     const status: Status = target.status === "done" ? "queued" : "done";
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status } : t)));
-    const { data } = await api.updateTask({ ...run, tasks }, id, status);
-    setTasks(data.run.tasks);
   };
 
   return (
@@ -158,16 +153,26 @@ function Dashboard() {
                 <input
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  className="flex-1 rounded-xl border border-line/70 bg-panel/50 px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-soft/70 focus:border-brand/50"
+                  disabled={loading}
+                  className="flex-1 rounded-xl border border-line/70 bg-panel/50 px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-soft/70 focus:border-brand/50 disabled:opacity-60"
                   placeholder="Describe a real-world goal…"
                 />
                 <button
                   type="submit"
-                  className="rounded-xl bg-gradient-to-br from-brand to-brand-2 px-5 py-3 text-sm font-semibold text-on-brand shadow-lg shadow-brand/30"
+                  disabled={loading}
+                  className="rounded-xl bg-gradient-to-br from-brand to-brand-2 px-5 py-3 text-sm font-semibold text-on-brand shadow-lg shadow-brand/30 disabled:opacity-60"
                 >
-                  Forge Plan
+                  {loading ? "Forging…" : "Forge Plan"}
                 </button>
               </form>
+              {loading && (
+                <p className="mt-3 font-mono text-[11px] text-brand">Contacting backend · generating plan…</p>
+              )}
+              {error && (
+                <p role="alert" className="mt-3 rounded-lg border border-rose/40 bg-rose/10 px-3 py-2 font-mono text-[11px] text-ink">
+                  Backend error — {error}
+                </p>
+              )}
             </section>
 
             <section className="panel-glass mt-6 rounded-2xl p-6">
