@@ -153,16 +153,26 @@ function Dashboard() {
                 <input
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  className="flex-1 rounded-xl border border-line/70 bg-panel/50 px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-soft/70 focus:border-brand/50"
+                  disabled={loading}
+                  className="flex-1 rounded-xl border border-line/70 bg-panel/50 px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-soft/70 focus:border-brand/50 disabled:opacity-60"
                   placeholder="Describe a real-world goal…"
                 />
                 <button
                   type="submit"
-                  className="rounded-xl bg-gradient-to-br from-brand to-brand-2 px-5 py-3 text-sm font-semibold text-on-brand shadow-lg shadow-brand/30"
+                  disabled={loading}
+                  className="rounded-xl bg-gradient-to-br from-brand to-brand-2 px-5 py-3 text-sm font-semibold text-on-brand shadow-lg shadow-brand/30 disabled:opacity-60"
                 >
-                  Forge Plan
+                  {loading ? "Forging…" : "Forge Plan"}
                 </button>
               </form>
+              {loading && (
+                <p className="mt-3 font-mono text-[11px] text-brand">Contacting backend · generating plan…</p>
+              )}
+              {error && (
+                <p role="alert" className="mt-3 rounded-lg border border-rose/40 bg-rose/10 px-3 py-2 font-mono text-[11px] text-ink">
+                  Backend error — {error}
+                </p>
+              )}
             </section>
 
             <section className="panel-glass mt-6 rounded-2xl p-6">
