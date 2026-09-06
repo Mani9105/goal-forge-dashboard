@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { defaultRun, type GoalRun, type Status } from "@/lib/mock-data";
 import { api } from "@/lib/api";
 
@@ -51,6 +51,20 @@ function Dashboard() {
     setDecided(null);
   };
 
+  // Load whatever run the backend already holds, without disturbing the UI on failure.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .getRun()
+      .then((next) => {
+        if (!cancelled && (next.plan.length || next.tasks.length)) applyRun(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const goal = draft.trim();
@@ -67,7 +81,10 @@ function Dashboard() {
     }
   };
 
-  const decide = (id: string, verdict: "approved" | "declined") => {
+  const decide = async (id: string, verdict: "approved" | "declined") => {
+    const prevApprovals = approvals;
+    const prevTasks = tasks;
+    setError(null);
     setApprovals((a) => a.filter((x) => x.id !== id));
     setDecided(verdict);
     setTasks((ts) =>
@@ -75,13 +92,35 @@ function Dashboard() {
         t.status === "awaiting" ? { ...t, status: verdict === "approved" ? "done" : "queued" } : t,
       ),
     );
+    try {
+      const next = await api.decideApproval(id, verdict, run.goal);
+      if (next) {
+        setRun(next);
+        setTasks(next.tasks);
+        setApprovals(next.approvals);
+      }
+    } catch (err) {
+      setApprovals(prevApprovals);
+      setTasks(prevTasks);
+      setDecided(null);
+      setError(err instanceof Error ? err.message : "Could not send that decision.");
+    }
   };
 
-  const toggleTask = (id: string) => {
+  const toggleTask = async (id: string) => {
     const target = tasks.find((t) => t.id === id);
     if (!target) return;
     const status: Status = target.status === "done" ? "queued" : "done";
+    const prevTasks = tasks;
+    setError(null);
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status } : t)));
+    try {
+      const next = await api.setTaskStatus(id, status, run.goal);
+      if (next) setTasks(next.tasks);
+    } catch (err) {
+      setTasks(prevTasks);
+      setError(err instanceof Error ? err.message : "Could not update that task.");
+    }
   };
 
   return (
