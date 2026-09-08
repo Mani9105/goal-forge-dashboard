@@ -1,22 +1,14 @@
-import { defaultRun, type GoalRun, type Status } from "@/lib/mock-data";
+import { type ActivityItem, type GoalRun, type Status } from "@/lib/mock-data";
 
-const TIMEOUT_MS = 30_000;
+const DEFAULT_BASE_URL = "https://ominous-disco-97xxrx65vxpjh76g4-8000.app.github.dev";
 
 const CONFIGURED = (import.meta.env["VITE_API_BASE_URL"] as string | undefined)?.replace(/\/+$/, "") ?? "";
 
-/** True when a FastAPI backend URL is configured; otherwise we use the built-in /api routes. */
-export const isRemoteBackend = CONFIGURED.length > 0;
+export const BASE_URL = CONFIGURED || DEFAULT_BASE_URL;
 
-const BASE_URL = isRemoteBackend ? CONFIGURED : "/api";
-
-const paths = {
-  generate: isRemoteBackend ? "/generate" : "/goals",
-  run: isRemoteBackend ? "/run" : "/goals",
-  task: (id: string) => (isRemoteBackend ? `/tasks/${encodeURIComponent(id)}` : `/tasks/${encodeURIComponent(id)}`),
-  approval: (id: string) =>
-    isRemoteBackend ? `/approvals/${encodeURIComponent(id)}` : `/approvals/${encodeURIComponent(id)}`,
-  agentStatus: isRemoteBackend ? "/agent-status" : "/agent-status",
-};
+/** Plan generation runs a local model, so it needs a long ceiling; everything else is quick. */
+const GENERATE_TIMEOUT_MS = 180_000;
+const ACTION_TIMEOUT_MS = 60_000;
 
 export class ApiError extends Error {
   status: number | undefined;
@@ -27,79 +19,55 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path: string, init?: RequestInit): Promise<unknown> {
+async function request(path: string, init?: RequestInit, timeoutMs = ACTION_TIMEOUT_MS): Promise<unknown> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${BASE_URL}${path}`, {
       ...init,
       signal: controller.signal,
       headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
     });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new ApiError(
-        `Backend returned ${res.status}${detail ? `: ${readDetail(detail)}` : ""}`,
-        res.status,
-      );
-    }
     const text = await res.text();
+    if (!res.ok) throw new ApiError(`${res.status} — ${readDetail(text)}`, res.status);
     if (!text) return {};
     try {
       return JSON.parse(text) as unknown;
     } catch {
-      throw new ApiError("Backend returned a response that was not valid JSON.");
+      throw new ApiError("The backend replied with something that was not valid JSON.");
     }
   } catch (err) {
     if (err instanceof ApiError) throw err;
     if (err instanceof DOMException && err.name === "AbortError") {
-      throw new ApiError("Backend did not respond in time.");
+      throw new ApiError("The backend took too long to answer. Nothing was left running.");
     }
-    throw new ApiError("Could not reach the backend.");
+    throw new ApiError("Could not reach the backend. Check that it is running and reachable.");
   } finally {
     clearTimeout(timer);
   }
 }
 
-// FastAPI validation errors come back as {detail: "..."} or {detail: [{msg, loc}]}.
+// FastAPI errors are {detail: "..."} or {detail: [{msg}]}.
 function readDetail(text: string): string {
   try {
     const parsed = JSON.parse(text) as { detail?: unknown };
     const d = parsed.detail;
-    if (typeof d === "string") return d.slice(0, 200);
+    if (typeof d === "string") return d.slice(0, 240);
     if (Array.isArray(d)) {
       return d
         .map((e) => str(rec(e)["msg"]))
         .filter(Boolean)
         .join("; ")
-        .slice(0, 200);
+        .slice(0, 240);
     }
   } catch {
-    /* fall through to raw text */
+    /* fall through */
   }
-  return text.slice(0, 200);
-}
-
-const statuses: Status[] = ["done", "running", "queued", "awaiting"];
-
-function toStatus(value: unknown, fallback: Status = "queued"): Status {
-  const v = String(value ?? "").toLowerCase();
-  if (statuses.includes(v as Status)) return v as Status;
-  if (v === "completed" || v === "complete" || v === "finished" || v === "success") return "done";
-  if (v === "in_progress" || v === "in-progress" || v === "active" || v === "started") return "running";
-  if (v === "pending" || v === "todo" || v === "not_started") return "queued";
-  if (v === "waiting" || v === "awaiting_approval" || v === "blocked") return "awaiting";
-  if (typeof value === "boolean") return value ? "done" : "queued";
-  return fallback;
+  return (text || "no details").slice(0, 240);
 }
 
 function str(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim() ? value : fallback;
-}
-
-function num(value: unknown, fallback = 0): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
 }
 
 function rec(value: unknown): Record<string, unknown> {
@@ -108,116 +76,151 @@ function rec(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function list(value: unknown): Record<string, unknown>[] {
-  if (Array.isArray(value)) return value.map((v) => (typeof v === "string" ? { title: v } : rec(v)));
-  return [];
+function arr(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.map(rec) : [];
 }
 
-function pick(source: Record<string, unknown>, ...keys: string[]): unknown {
-  for (const key of keys) if (source[key] !== undefined && source[key] !== null) return source[key];
-  return undefined;
+// backend TaskStatus -> UI Status
+function toStatus(value: unknown): Status {
+  switch (String(value ?? "").toLowerCase()) {
+    case "completed":
+      return "done";
+    case "running":
+      return "running";
+    case "waiting_approval":
+      return "awaiting";
+    case "failed":
+      return "done";
+    default:
+      return "queued";
+  }
 }
 
-// Normalize whatever the backend returns into the GoalRun the UI renders.
-// Nothing is invented: missing collections stay empty.
-export function normalizeRun(raw: unknown, goal: string): GoalRun {
+function progressFor(status: Status, verified: boolean): number {
+  if (status === "done") return verified ? 100 : 95;
+  if (status === "running") return 55;
+  if (status === "awaiting") return 70;
+  return 0;
+}
+
+const mintTypes = new Set(["task_completed", "verification", "plan_created"]);
+const amberTypes = new Set(["approval_required", "recovery"]);
+
+function toneFor(type: string): ActivityItem["tone"] {
+  if (mintTypes.has(type)) return "mint";
+  if (amberTypes.has(type)) return "amber";
+  return "brand";
+}
+
+/** Map a FastAPI GoalResponse onto the shape the dashboard renders. */
+export function normalizeRun(raw: unknown, fallbackGoal: string): GoalRun {
   const data = rec(raw);
-  const nested = rec(pick(data, "run", "result_data", "data"));
-  const run = Object.keys(nested).length > 0 ? nested : data;
+  const plan = rec(data["plan"]);
+  const backendTasks = arr(plan["tasks"]);
+  const approval = rec(data["approval"]);
+
+  const tasks = backendTasks.map((t, i) => {
+    const id = str(t["id"], `task-${i + 1}`);
+    const status = toStatus(t["status"]);
+    const failed = String(t["status"] ?? "") === "failed";
+    return {
+      id,
+      title: str(t["title"], `Task ${i + 1}`),
+      description: str(t["description"]),
+      expectedOutcome: str(t["expected_outcome"]),
+      result: str(t["result"]),
+      verified: t["verified"] === true,
+      failed,
+      status,
+    };
+  });
+
+  const completed = tasks.filter((t) => t.status === "done").length;
+  const confidence = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
+  const objective = str(plan["objective"]);
+  const resultText = str(data["result"]);
 
   return {
-    goal: str(pick(run, "goal", "objective", "prompt"), goal),
-    chips: (Array.isArray(pick(run, "chips", "tags", "labels")) ? (pick(run, "chips", "tags", "labels") as unknown[]) : [])
-      .map((c) => str(c))
-      .filter(Boolean),
-    plan: list(pick(run, "plan", "steps", "plan_steps")).map((step, i) => ({
-      id: str(pick(step, "id", "step_id"), `p${i + 1}`),
-      title: str(pick(step, "title", "name", "step", "description"), `Step ${i + 1}`),
-      status: toStatus(pick(step, "status", "state")),
-      progress: Math.min(100, Math.max(0, num(pick(step, "progress", "percent"), 0))),
+    goal: str(data["goal"], fallbackGoal),
+    chips: [
+      objective ? "objective set" : "",
+      tasks.length ? `${tasks.length} tasks` : "",
+      approval["required"] === true ? "approval pending" : "",
+    ].filter(Boolean),
+    plan: tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      status: t.status,
+      progress: progressFor(t.status, t.verified),
     })),
-    activity: list(pick(run, "activity", "events", "activity_events", "logs")).map((item, i) => {
-      const tone = str(pick(item, "tone"));
+    activity: arr(data["activities"]).map((a, i) => {
+      const type = str(a["type"], "event");
       return {
-        id: str(pick(item, "id", "event_id"), `a${i + 1}`),
-        agent: str(pick(item, "agent", "agent_name", "source"), "Agent"),
-        message: str(pick(item, "message", "event", "text", "description")),
-        time: str(pick(item, "time", "timestamp", "created_at"), ""),
-        kind: str(pick(item, "kind", "type", "category"), ""),
-        tone: tone === "mint" || tone === "amber" ? tone : ("brand" as const),
+        id: `a${i + 1}`,
+        agent: "GoalForge",
+        message: str(a["message"]),
+        time: `#${i + 1}`,
+        kind: type.replace(/_/g, " "),
+        tone: toneFor(type),
       };
     }),
-    tasks: list(pick(run, "tasks", "todos", "actions")).map((task, i) => ({
-      id: str(pick(task, "id", "task_id"), `t${i + 1}`),
-      title: str(pick(task, "title", "name", "task", "description"), `Task ${i + 1}`),
-      status: toStatus(pick(task, "status", "state", "done")),
-    })),
-    approvals: list(pick(run, "approvals", "approval_requests", "pending_approvals")).map((ap, i) => ({
-      id: str(pick(ap, "id", "approval_id"), `ap${i + 1}`),
-      title: str(pick(ap, "title", "name", "question")),
-      detail: str(pick(ap, "detail", "description", "reason", "message")),
-    })),
-    result: (() => {
-      const r = rec(pick(run, "result", "final_result", "outcome"));
-      return {
-        label: str(pick(r, "label", "title"), "Projected outcome"),
-        headline: str(pick(r, "headline", "outcome", "summary", "value"), "—"),
-        note: str(pick(r, "note", "subtitle", "detail")),
-        confidence: Math.min(100, Math.max(0, num(pick(r, "confidence", "score"), 0))),
-      };
-    })(),
-  };
-}
-
-function withFallback(run: GoalRun, goal: string): GoalRun {
-  // Keep the panels meaningful if the backend omits a section entirely.
-  return {
-    ...run,
-    goal: run.goal || goal || defaultRun.goal,
+    tasks: tasks.map((t) => ({ id: t.id, title: t.title, status: t.status })),
+    approvals:
+      approval["required"] === true
+        ? [
+            {
+              id: str(approval["task_id"], "approval"),
+              title: "Human approval required",
+              detail: str(approval["reason"], "The agent paused before a consequential action."),
+            },
+          ]
+        : [],
+    result: {
+      label: objective ? "Objective" : "Projected outcome",
+      headline: resultText || objective || "—",
+      note: tasks.length ? `${completed}/${tasks.length} tasks complete` : "",
+      confidence,
+    },
   };
 }
 
 export const api = {
-  isRemote: isRemoteBackend,
   baseUrl: BASE_URL,
 
+  health: async (): Promise<boolean> => {
+    try {
+      const payload = rec(await request("/health", { method: "GET" }, 10_000));
+      return str(payload["status"]) === "healthy";
+    } catch {
+      return false;
+    }
+  },
+
   generate: async (goal: string): Promise<GoalRun> => {
-    const payload = await request(paths.generate, {
-      method: "POST",
-      body: JSON.stringify({ goal, prompt: goal }),
-    });
-    return withFallback(normalizeRun(payload, goal), goal);
+    const payload = await request(
+      "/generate",
+      { method: "POST", body: JSON.stringify({ goal }) },
+      GENERATE_TIMEOUT_MS,
+    );
+    return normalizeRun(payload, goal);
   },
 
-  getRun: async (): Promise<GoalRun> => {
-    const payload = await request(paths.run);
-    return withFallback(normalizeRun(payload, ""), "");
+  executeTask: async (taskId: string, goal: string): Promise<GoalRun> => {
+    const payload = await request(
+      `/execute/${encodeURIComponent(taskId)}?goal=${encodeURIComponent(goal)}`,
+      { method: "POST" },
+      GENERATE_TIMEOUT_MS,
+    );
+    return normalizeRun(payload, goal);
   },
 
-  setTaskStatus: async (id: string, status: Status, goal: string): Promise<GoalRun | null> => {
-    const payload = await request(paths.task(id), {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
-    const run = normalizeRun(payload, goal);
-    return run.tasks.length ? withFallback(run, goal) : null;
-  },
-
-  decideApproval: async (
-    id: string,
-    verdict: "approved" | "declined",
-    goal: string,
-  ): Promise<GoalRun | null> => {
-    const payload = await request(paths.approval(id), {
-      method: "POST",
-      body: JSON.stringify({ verdict, decision: verdict, approved: verdict === "approved" }),
-    });
-    const run = normalizeRun(payload, goal);
-    return run.tasks.length || run.plan.length ? withFallback(run, goal) : null;
-  },
-
-  agentStatus: async (): Promise<{ active: number; online: boolean }> => {
-    const payload = rec(await request(paths.agentStatus));
-    return { active: num(pick(payload, "active", "agents_active"), 0), online: payload["online"] !== false };
+  decideApproval: async (verdict: "approved" | "declined", goal: string): Promise<GoalRun> => {
+    const path = verdict === "approved" ? "/approve" : "/decline";
+    const payload = await request(
+      `${path}?goal=${encodeURIComponent(goal)}`,
+      { method: "POST" },
+      GENERATE_TIMEOUT_MS,
+    );
+    return normalizeRun(payload, goal);
   },
 };
