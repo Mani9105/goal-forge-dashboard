@@ -223,7 +223,7 @@ function Dashboard() {
                         {t.verified && (
                           <p className="mt-2 font-mono text-[11px] text-mint">✓ verified</p>
                         )}
-                        {t.failed && <p className="mt-2 font-mono text-[11px] text-rose">step failed</p>}
+                        
                       </div>
                       <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
                         <span className={`rounded-full px-3 py-1 font-mono text-[11px] ${statusChip[t.status]}`}>
