@@ -80,6 +80,10 @@ function arr(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? value.map(rec) : [];
 }
 
+function strArr(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((v) => str(v)).filter(Boolean) : [];
+}
+
 // backend TaskStatus -> UI Status
 function toStatus(value: unknown): Status {
   switch (String(value ?? "").toLowerCase()) {
