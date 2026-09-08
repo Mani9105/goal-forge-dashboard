@@ -14,18 +14,32 @@ function toLines(text: string): string[] {
 
 /** Pull "Day N: do something" entries out of the summary and completed steps. */
 export function extractDays(run: GoalRun): DayEntry[] {
-  const source = [...toLines(run.result.summary), ...run.result.completedSteps.flatMap(toLines)];
   const seen = new Set<string>();
   const days: DayEntry[] = [];
+
+  const push = (label: string, detail: string) => {
+    const key = label.toLowerCase();
+    if (seen.has(key) || !detail) return;
+    seen.add(key);
+    days.push({ label, detail });
+  };
+
+  // Prefer the backend's own plan tasks — titles like "Day 1: …" with real descriptions.
+  for (const t of run.tasks) {
+    const m = DAY_RE.exec(t.title);
+    if (!m) continue;
+    const label = m[1]!.replace(/\s+/g, " ").replace(/^day/i, "Day");
+    const titleDetail = m[2]!.trim();
+    const bits = [titleDetail, t.description, t.result].filter(Boolean);
+    push(label, bits.join(" — "));
+  }
+
+  const source = [...toLines(run.result.summary), ...run.result.completedSteps.flatMap(toLines)];
   for (const line of source) {
     const m = DAY_RE.exec(line);
     if (!m) continue;
     const label = m[1]!.replace(/\s+/g, " ").replace(/^day/i, "Day");
-    const detail = m[2]!.trim();
-    const key = label.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    days.push({ label, detail });
+    push(label, m[2]!.trim());
   }
   return days;
 }
