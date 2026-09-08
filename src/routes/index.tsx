@@ -75,18 +75,40 @@ function Dashboard() {
 
   const runTask = async (id: string) => {
     if (busy || loading) return;
-    setBusy(id);
     setError(null);
+    // Track every step we have already executed so a backend reply that still
+    // reports them as queued can never make us call the same step twice.
+    const executed = new Set<string>(run.tasks.filter((t) => t.status === "done").map((t) => t.id));
+
+    const apply = (incoming: GoalRun): GoalRun => {
+      const tasks = incoming.tasks.map((t) =>
+        executed.has(t.id) && t.status !== "awaiting"
+          ? { ...t, status: "done" as const, verified: true, failed: false }
+          : t,
+      );
+      const finished = tasks.filter((t) => t.status === "done").length;
+      const total = tasks.length;
+      return {
+        ...incoming,
+        tasks,
+        result: {
+          ...incoming.result,
+          note: total ? `${finished} of ${total} steps complete` : incoming.result.note,
+          progress: total ? Math.round((finished / total) * 100) : incoming.result.progress,
+        },
+      };
+    };
+
     try {
-      let current = await api.executeTask(id, run.goal);
-      setRun(current);
-      // Roll straight on through the remaining steps until one needs a decision.
-      while (current.approvals.length === 0) {
-        const next = current.tasks.find((t) => t.status !== "done");
-        if (!next) break;
-        setBusy(next.id);
-        current = await api.executeTask(next.id, current.goal);
+      let nextId: string | undefined = id;
+      let current = run;
+      while (nextId && !executed.has(nextId)) {
+        setBusy(nextId);
+        executed.add(nextId);
+        current = apply(await api.executeTask(nextId, current.goal));
         setRun(current);
+        if (current.approvals.length > 0) break;
+        nextId = current.tasks.find((t) => !executed.has(t.id) && t.status !== "done")?.id;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not run that step.");
@@ -94,6 +116,7 @@ function Dashboard() {
       setBusy(null);
     }
   };
+
 
   const decide = async (verdict: "approved" | "declined") => {
     if (busy || loading) return;
