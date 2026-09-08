@@ -341,7 +341,7 @@ function Dashboard() {
               )}
             </section>
 
-            <section className="panel-glass rounded-2xl p-6">
+            <section className="panel-glass max-h-[720px] overflow-y-auto rounded-2xl p-6">
   <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-soft">
     Final Outcome
   </h2>

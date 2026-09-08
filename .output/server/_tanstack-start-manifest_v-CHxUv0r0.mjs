@@ -1,4 +1,4 @@
-//#region \0tanstack-start-manifest:v
+//#region node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-CHxUv0r0.js
 var tsrStartManifest = () => ({ routes: {
 	__root__: {
 		filePath: "/workspaces/goal-forge-dashboard/src/routes/__root.tsx",
@@ -9,17 +9,17 @@ var tsrStartManifest = () => ({ routes: {
 			"/api/approvals/$approvalId",
 			"/api/tasks/$taskId"
 		],
-		preloads: ["/assets/index-C4oRlR20.js"],
+		preloads: ["/assets/index-BEsF7KWO.js"],
 		scripts: [{ attrs: {
 			type: "module",
 			async: !0,
-			src: "/assets/index-C4oRlR20.js"
+			src: "/assets/index-BEsF7KWO.js"
 		} }]
 	},
 	"/": {
 		filePath: "/workspaces/goal-forge-dashboard/src/routes/index.tsx",
 		children: void 0,
-		preloads: ["/assets/routes-CXw9tvGP.js"]
+		preloads: ["/assets/routes-L8aMHm2M.js"]
 	}
 } });
 //#endregion
