@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { defaultRun, type GoalRun, type Status } from "@/lib/mock-data";
 import { api } from "@/lib/api";
+import { extractDays, headlineSummary, withoutTaskEcho } from "@/lib/outcome";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -133,6 +135,13 @@ function Dashboard() {
 
   const hasPlan = run.tasks.length > 0;
   const progress = run.result.progress;
+  const days = extractDays(run);
+  const dayText = new Set(days.map((d) => `${d.label}: ${d.detail}`.toLowerCase()));
+  const completedResults = withoutTaskEcho(run.result.completedSteps, run).filter(
+    (s) => !dayText.has(s.trim().toLowerCase()) && !/^\s*(?:[-*•]\s*)?day\s*\d/i.test(s),
+  );
+  const nextSteps = withoutTaskEcho(run.result.nextSteps, run);
+
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-mist via-mist-2 to-ice font-display text-ink">
@@ -290,14 +299,30 @@ function Dashboard() {
             )}
 
             <p className="mt-3 text-lg font-semibold leading-snug">
-              {run.result.summary || (hasPlan ? "Run the steps to reach your outcome." : "No outcome yet.")}
+              {headlineSummary(run) ||
+                run.result.summary ||
+                (hasPlan ? "Run the steps to reach your outcome." : "No outcome yet.")}
             </p>
 
-            {run.result.completedSteps.length > 0 && (
+            {days.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-soft">Your day-by-day plan</h3>
+                <ol className="mt-2 space-y-2">
+                  {days.map((d) => (
+                    <li key={d.label} className="rounded-xl border border-line/70 bg-panel/50 p-3">
+                      <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-brand">{d.label}</p>
+                      <p className="mt-1 text-[13px] leading-relaxed text-ink">{d.detail}</p>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {completedResults.length > 0 && (
               <div className="mt-4">
                 <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-soft">Completed Results</h3>
                 <ul className="mt-2 space-y-2">
-                  {run.result.completedSteps.map((step, i) => (
+                  {completedResults.map((step, i) => (
                     <li key={i} className="flex gap-2 text-[13px] text-ink">
                       <span className="text-mint">✓</span>
                       <span>{step}</span>
@@ -307,11 +332,11 @@ function Dashboard() {
               </div>
             )}
 
-            {run.result.nextSteps.length > 0 && (
+            {nextSteps.length > 0 && (
               <div className="mt-4">
                 <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-soft">Next Steps</h3>
                 <ul className="mt-2 space-y-2">
-                  {run.result.nextSteps.map((step, i) => (
+                  {nextSteps.map((step, i) => (
                     <li key={i} className="flex gap-2 text-[13px] text-ink-soft">
                       <span className="text-brand">•</span>
                       <span>{step}</span>
@@ -322,6 +347,7 @@ function Dashboard() {
             )}
 
             {run.result.note && <p className="mt-4 text-sm text-ink-soft">{run.result.note}</p>}
+
 
             <div className="mt-4 flex items-center justify-between font-mono text-[11px] text-ink-soft">
               <span>Progress</span>
