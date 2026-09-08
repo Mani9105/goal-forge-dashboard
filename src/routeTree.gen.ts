@@ -10,89 +10,33 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiAgentStatusRouteImport } from './routes/api/agent-status'
-import { Route as ApiGoalsRouteImport } from './routes/api/goals'
-import { Route as ApiApprovalsApprovalIdRouteImport } from './routes/api/approvals.$approvalId'
-import { Route as ApiTasksTaskIdRouteImport } from './routes/api/tasks.$taskId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAgentStatusRoute = ApiAgentStatusRouteImport.update({
-  id: '/api/agent-status',
-  path: '/api/agent-status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiGoalsRoute = ApiGoalsRouteImport.update({
-  id: '/api/goals',
-  path: '/api/goals',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiApprovalsApprovalIdRoute = ApiApprovalsApprovalIdRouteImport.update({
-  id: '/api/approvals/$approvalId',
-  path: '/api/approvals/$approvalId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiTasksTaskIdRoute = ApiTasksTaskIdRouteImport.update({
-  id: '/api/tasks/$taskId',
-  path: '/api/tasks/$taskId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/agent-status': typeof ApiAgentStatusRoute
-  '/api/goals': typeof ApiGoalsRoute
-  '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
-  '/api/tasks/$taskId': typeof ApiTasksTaskIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/agent-status': typeof ApiAgentStatusRoute
-  '/api/goals': typeof ApiGoalsRoute
-  '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
-  '/api/tasks/$taskId': typeof ApiTasksTaskIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/agent-status': typeof ApiAgentStatusRoute
-  '/api/goals': typeof ApiGoalsRoute
-  '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
-  '/api/tasks/$taskId': typeof ApiTasksTaskIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/api/agent-status'
-    | '/api/goals'
-    | '/api/approvals/$approvalId'
-    | '/api/tasks/$taskId'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/api/agent-status'
-    | '/api/goals'
-    | '/api/approvals/$approvalId'
-    | '/api/tasks/$taskId'
-  id:
-    | '__root__'
-    | '/'
-    | '/api/agent-status'
-    | '/api/goals'
-    | '/api/approvals/$approvalId'
-    | '/api/tasks/$taskId'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiAgentStatusRoute: typeof ApiAgentStatusRoute
-  ApiGoalsRoute: typeof ApiGoalsRoute
-  ApiApprovalsApprovalIdRoute: typeof ApiApprovalsApprovalIdRoute
-  ApiTasksTaskIdRoute: typeof ApiTasksTaskIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -104,43 +48,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/agent-status': {
-      id: '/api/agent-status'
-      path: '/api/agent-status'
-      fullPath: '/api/agent-status'
-      preLoaderRoute: typeof ApiAgentStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/goals': {
-      id: '/api/goals'
-      path: '/api/goals'
-      fullPath: '/api/goals'
-      preLoaderRoute: typeof ApiGoalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/approvals/$approvalId': {
-      id: '/api/approvals/$approvalId'
-      path: '/api/approvals/$approvalId'
-      fullPath: '/api/approvals/$approvalId'
-      preLoaderRoute: typeof ApiApprovalsApprovalIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/tasks/$taskId': {
-      id: '/api/tasks/$taskId'
-      path: '/api/tasks/$taskId'
-      fullPath: '/api/tasks/$taskId'
-      preLoaderRoute: typeof ApiTasksTaskIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiAgentStatusRoute: ApiAgentStatusRoute,
-  ApiGoalsRoute: ApiGoalsRoute,
-  ApiApprovalsApprovalIdRoute: ApiApprovalsApprovalIdRoute,
-  ApiTasksTaskIdRoute: ApiTasksTaskIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

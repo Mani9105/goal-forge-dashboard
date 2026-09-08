@@ -1,4 +1,4 @@
-import { type ActivityItem, type GoalRun, type Status } from "@/lib/mock-data";
+import { type GoalRun, type Status } from "@/lib/mock-data";
 
 const DEFAULT_BASE_URL = "https://ominous-disco-97xxrx65vxpjh76g4-8000.app.github.dev";
 
