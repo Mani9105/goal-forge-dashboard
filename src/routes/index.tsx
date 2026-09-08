@@ -42,24 +42,22 @@ function Dashboard() {
   const [decided, setDecided] = useState<string | null>(null);
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [online, setOnline] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const applyRun = (next: GoalRun) => {
     setRun(next);
     setTasks(next.tasks);
     setApprovals(next.approvals);
-    setDecided(null);
   };
 
-  // Load whatever run the backend already holds, without disturbing the UI on failure.
+  // Simple reachability check so the header can tell the truth about the backend.
   useEffect(() => {
     let cancelled = false;
-    api
-      .getRun()
-      .then((next) => {
-        if (!cancelled && (next.plan.length || next.tasks.length)) applyRun(next);
-      })
-      .catch(() => undefined);
+    api.health().then((ok) => {
+      if (!cancelled) setOnline(ok);
+    });
     return () => {
       cancelled = true;
     };
@@ -72,8 +70,10 @@ function Dashboard() {
     setDraft("");
     setLoading(true);
     setError(null);
+    setDecided(null);
     try {
       applyRun(await api.generate(goal));
+      setOnline(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Goal generation failed.");
     } finally {
@@ -82,44 +82,33 @@ function Dashboard() {
   };
 
   const decide = async (id: string, verdict: "approved" | "declined") => {
-    const prevApprovals = approvals;
-    const prevTasks = tasks;
+    if (busy || loading) return;
+    setBusy(id);
     setError(null);
-    setApprovals((a) => a.filter((x) => x.id !== id));
-    setDecided(verdict);
-    setTasks((ts) =>
-      ts.map((t) =>
-        t.status === "awaiting" ? { ...t, status: verdict === "approved" ? "done" : "queued" } : t,
-      ),
-    );
     try {
-      const next = await api.decideApproval(id, verdict, run.goal);
-      if (next) {
-        setRun(next);
-        setTasks(next.tasks);
-        setApprovals(next.approvals);
-      }
+      applyRun(await api.decideApproval(verdict, run.goal));
+      setDecided(verdict);
     } catch (err) {
-      setApprovals(prevApprovals);
-      setTasks(prevTasks);
-      setDecided(null);
       setError(err instanceof Error ? err.message : "Could not send that decision.");
+    } finally {
+      setBusy(null);
     }
   };
 
   const toggleTask = async (id: string) => {
+    if (busy || loading) return;
     const target = tasks.find((t) => t.id === id);
-    if (!target) return;
-    const status: Status = target.status === "done" ? "queued" : "done";
-    const prevTasks = tasks;
+    if (!target || target.status === "done") return;
+    setBusy(id);
     setError(null);
-    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status } : t)));
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status: "running" } : t)));
     try {
-      const next = await api.setTaskStatus(id, status, run.goal);
-      if (next) setTasks(next.tasks);
+      applyRun(await api.executeTask(id, run.goal));
     } catch (err) {
-      setTasks(prevTasks);
-      setError(err instanceof Error ? err.message : "Could not update that task.");
+      setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status: target.status } : t)));
+      setError(err instanceof Error ? err.message : "Could not run that task.");
+    } finally {
+      setBusy(null);
     }
   };
 
