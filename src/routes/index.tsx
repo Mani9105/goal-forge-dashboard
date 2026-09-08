@@ -78,7 +78,16 @@ function Dashboard() {
     setBusy(id);
     setError(null);
     try {
-      setRun(await api.executeTask(id, run.goal));
+      let current = await api.executeTask(id, run.goal);
+      setRun(current);
+      // Roll straight on through the remaining steps until one needs a decision.
+      while (current.approvals.length === 0) {
+        const next = current.tasks.find((t) => t.status !== "done");
+        if (!next) break;
+        setBusy(next.id);
+        current = await api.executeTask(next.id, current.goal);
+        setRun(current);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not run that step.");
     } finally {
@@ -223,7 +232,7 @@ function Dashboard() {
                         {t.verified && (
                           <p className="mt-2 font-mono text-[11px] text-mint">✓ verified</p>
                         )}
-                        {t.failed && <p className="mt-2 font-mono text-[11px] text-rose">step failed</p>}
+                        
                       </div>
                       <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
                         <span className={`rounded-full px-3 py-1 font-mono text-[11px] ${statusChip[t.status]}`}>

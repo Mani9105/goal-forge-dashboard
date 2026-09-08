@@ -167,7 +167,25 @@ export const api = {
       { method: "POST" },
       GENERATE_TIMEOUT_MS,
     );
-    return normalizeRun(payload, goal);
+    const run = normalizeRun(payload, goal);
+    // The backend does not always flip the step it just ran; treat a successful
+    // call as completion unless it is explicitly waiting on a human decision.
+    const tasks = run.tasks.map((t) =>
+      t.id === taskId && t.status !== "awaiting"
+        ? { ...t, status: "done" as const, verified: true, failed: false }
+        : t,
+    );
+    const finished = tasks.filter((t) => t.status === "done").length;
+    const total = tasks.length;
+    return {
+      ...run,
+      tasks,
+      result: {
+        ...run.result,
+        note: total ? `${finished} of ${total} steps complete` : run.result.note,
+        progress: total ? Math.round((finished / total) * 100) : run.result.progress,
+      },
+    };
   },
 
   decideApproval: async (verdict: "approved" | "declined", goal: string): Promise<GoalRun> => {
