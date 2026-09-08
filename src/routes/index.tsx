@@ -78,7 +78,16 @@ function Dashboard() {
     setBusy(id);
     setError(null);
     try {
-      setRun(await api.executeTask(id, run.goal));
+      let current = await api.executeTask(id, run.goal);
+      setRun(current);
+      // Roll straight on through the remaining steps until one needs a decision.
+      while (current.approvals.length === 0) {
+        const next = current.tasks.find((t) => t.status !== "done");
+        if (!next) break;
+        setBusy(next.id);
+        current = await api.executeTask(next.id, current.goal);
+        setRun(current);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not run that step.");
     } finally {
