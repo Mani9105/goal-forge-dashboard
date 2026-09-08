@@ -80,6 +80,10 @@ function arr(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? value.map(rec) : [];
 }
 
+function strArr(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((v) => str(v)).filter(Boolean) : [];
+}
+
 // backend TaskStatus -> UI Status
 function toStatus(value: unknown): Status {
   switch (String(value ?? "").toLowerCase()) {
@@ -117,7 +121,12 @@ export function normalizeRun(raw: unknown, fallbackGoal: string): GoalRun {
   const total = tasks.length;
   const approvalPending = approval["required"] === true;
   const objective = str(plan["objective"]);
-  const resultText = str(data["result"]);
+
+  // The backend may return result as either a plain string or an object with
+  // summary, completed_steps and next_steps.
+  const resultObj = typeof data["result"] === "string" ? {} : rec(data["result"]);
+  const resultText = typeof data["result"] === "string" ? str(data["result"]) : str(resultObj["summary"]);
+  const summary = resultText || objective || "";
 
   return {
     goal: str(data["goal"], fallbackGoal),
@@ -132,10 +141,13 @@ export function normalizeRun(raw: unknown, fallbackGoal: string): GoalRun {
         ]
       : [],
     result: {
-      headline: resultText || objective || "",
+      headline: summary,
       note: total ? `${finished} of ${total} steps complete` : "",
       // Reaches exactly 100% once every step is done; never sticks below.
       progress: total ? Math.round((finished / total) * 100) : 0,
+      summary,
+      completedSteps: strArr(resultObj["completed_steps"]),
+      nextSteps: strArr(resultObj["next_steps"]),
     },
   };
 }

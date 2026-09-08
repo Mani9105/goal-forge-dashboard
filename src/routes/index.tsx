@@ -281,10 +281,48 @@ function Dashboard() {
 
           <section className="panel-glass h-fit rounded-2xl p-6 lg:col-span-4">
             <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-soft">Final outcome</h2>
+
+            {progress === 100 && (
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-mint/15 px-3 py-1.5 font-mono text-[11px] text-mint">
+                <span className="size-2 rounded-full bg-mint" />
+                Goal Completed
+              </div>
+            )}
+
             <p className="mt-3 text-lg font-semibold leading-snug">
-              {run.result.headline || (hasPlan ? "Run the steps to reach your outcome." : "No outcome yet.")}
+              {run.result.summary || (hasPlan ? "Run the steps to reach your outcome." : "No outcome yet.")}
             </p>
-            {run.result.note && <p className="mt-2 text-sm text-ink-soft">{run.result.note}</p>}
+
+            {run.result.completedSteps.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-soft">Completed Results</h3>
+                <ul className="mt-2 space-y-2">
+                  {run.result.completedSteps.map((step, i) => (
+                    <li key={i} className="flex gap-2 text-[13px] text-ink">
+                      <span className="text-mint">✓</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {run.result.nextSteps.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-soft">Next Steps</h3>
+                <ul className="mt-2 space-y-2">
+                  {run.result.nextSteps.map((step, i) => (
+                    <li key={i} className="flex gap-2 text-[13px] text-ink-soft">
+                      <span className="text-brand">•</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {run.result.note && <p className="mt-4 text-sm text-ink-soft">{run.result.note}</p>}
+
             <div className="mt-4 flex items-center justify-between font-mono text-[11px] text-ink-soft">
               <span>Progress</span>
               <span className="text-ink">{progress}%</span>
@@ -295,12 +333,6 @@ function Dashboard() {
                 style={{ width: `${progress}%` }}
               />
             </div>
-            {progress === 100 && (
-              <div className="mt-4 rounded-xl bg-mint/10 px-4 py-3 text-sm">
-                <p className="font-semibold text-ink">Goal completed</p>
-                <p className="mt-1 text-ink-soft">Every step finished successfully.</p>
-              </div>
-            )}
           </section>
         </div>
       </div>

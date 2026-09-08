@@ -25,6 +25,9 @@ export type GoalRun = {
     headline: string;
     note: string;
     progress: number;
+    summary: string;
+    completedSteps: string[];
+    nextSteps: string[];
   };
 };
 
@@ -33,5 +36,5 @@ export const defaultRun: GoalRun = {
   goal: "",
   tasks: [],
   approvals: [],
-  result: { headline: "", note: "", progress: 0 },
+  result: { headline: "", note: "", progress: 0, summary: "", completedSteps: [], nextSteps: [] },
 };
