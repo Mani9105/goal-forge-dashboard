@@ -53,12 +53,18 @@ class GoalRequest(BaseModel):
     goal: str = Field(min_length=3)
 
 
+class FinalOutcome(BaseModel):
+    summary: str
+    completed_steps: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+
+
 class GoalResponse(BaseModel):
     goal: str
     plan: Plan
     activities: list[Activity] = Field(default_factory=list)
     approval: ApprovalRequest = Field(default_factory=ApprovalRequest)
-    result: str | None = None
+    result: FinalOutcome | None = None
 class AgentTask(BaseModel):
     title: str
     description: str

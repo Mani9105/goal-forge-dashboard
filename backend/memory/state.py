@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from backend.models.schemas import (
     Activity,
     ApprovalRequest,
+    FinalOutcome,
     Plan,
     TaskStatus,
 )
@@ -16,7 +17,7 @@ class GoalState:
         self.plan: Plan | None = None
         self.activities: list[Activity] = []
         self.approval = ApprovalRequest()
-        self.result: str | None = None
+        self.result: FinalOutcome | None = None
         self.created_at = datetime.now(timezone.utc)
         self.updated_at = self.created_at
 
@@ -95,7 +96,7 @@ class GoalState:
         self.approval = ApprovalRequest()
         self._touch()
 
-    def set_result(self, result: str):
+    def set_result(self, result: FinalOutcome):
         self.result = result
         self._touch()
 

@@ -83,3 +83,59 @@ def run_goal(goal: str):
     plan = parse_agent_plan(response_text)
 
     return plan
+
+
+def generate_final_outcome(goal: str, plan) -> dict:
+    agent = create_goalforge_agent()
+
+    completed_tasks = []
+    for task in plan.tasks:
+        completed_tasks.append({
+            "title": task.title,
+            "description": task.description,
+            "expected_outcome": task.expected_outcome,
+        })
+
+    prompt = f"""
+Create the final outcome for this GoalForge goal.
+
+Goal:
+{goal}
+
+Execution plan and completed task information:
+{json.dumps(completed_tasks, ensure_ascii=False)}
+
+Synthesize this into a useful final plan that a user could actually follow.
+
+Return ONLY valid JSON with exactly this structure:
+
+{{
+  "summary": "A concise description of the complete outcome and how the goal is achieved.",
+  "completed_steps": [
+    "meaningful completed result 1",
+    "meaningful completed result 2"
+  ],
+  "next_steps": [
+    "concrete next step 1",
+    "concrete next step 2"
+  ]
+}}
+
+Rules:
+- Do not merely copy the task titles.
+- Turn the tasks into meaningful outcomes.
+- Make the summary describe the actual goal.
+- Keep completed_steps specific and useful.
+- If the goal is already fully achieved, next_steps should contain sensible follow-up actions.
+- Do not claim real-world actions that were not actually performed.
+- Do not use Markdown.
+- Return JSON only.
+"""
+
+    response = agent(prompt)
+    text = str(response).strip()
+
+    if text.startswith("```"):
+        text = text.replace("```json", "").replace("```", "").strip()
+
+    return json.loads(text)

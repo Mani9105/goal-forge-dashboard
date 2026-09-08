@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from backend.agents.orchestrator import run_goal
+from backend.agents.orchestrator import generate_final_outcome, run_goal
 from backend.agents.runner import run_plan
 from backend.memory.state import GoalState
 from backend.models.schemas import (
@@ -9,6 +9,7 @@ from backend.models.schemas import (
     ApprovalRequest,
     GoalRequest,
     GoalResponse,
+    FinalOutcome,
     Plan,
     Task,
     TaskStatus,
@@ -111,8 +112,55 @@ def execute_goal_task(task_id: str, goal: str):
 
     success = run_plan(state)
 
-    if success:
-        state.set_result("GoalForge completed the available plan.")
+    all_completed = (
+        state.plan is not None
+        and all(
+            task.status == TaskStatus.COMPLETED and task.verified
+            for task in state.plan.tasks
+        )
+    )
+
+    if all_completed:
+        completed = [
+            task
+            for task in state.plan.tasks
+            if task.status == TaskStatus.COMPLETED and task.verified
+        ]
+
+        try:
+            outcome = generate_final_outcome(
+                state.goal,
+                state.plan,
+            )
+
+            state.set_result(
+                FinalOutcome(
+                    summary=outcome.get(
+                        "summary",
+                        f"GoalForge completed: {state.plan.objective}",
+                    ),
+                    completed_steps=outcome.get(
+                        "completed_steps",
+                        [
+                            task.result or task.expected_outcome
+                            for task in completed
+                        ],
+                    ),
+                    next_steps=outcome.get("next_steps", []),
+                )
+            )
+
+        except Exception:
+            state.set_result(
+                FinalOutcome(
+                    summary=f"GoalForge completed: {state.plan.objective}",
+                    completed_steps=[
+                        task.result or task.expected_outcome
+                        for task in completed
+                    ],
+                    next_steps=[],
+                )
+            )
 
     return GoalResponse(
         goal=state.goal,
