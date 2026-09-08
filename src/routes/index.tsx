@@ -148,8 +148,15 @@ function Dashboard() {
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-2 rounded-full border border-mint/40 bg-mint/10 px-3 py-1.5 font-mono text-[11px] text-ink">
-              <span className="size-2 rounded-full bg-mint shadow shadow-mint/50" /> 4 agents live
+            <span
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[11px] text-ink ${
+                online === false ? "border-rose/40 bg-rose/10" : "border-mint/40 bg-mint/10"
+              }`}
+            >
+              <span
+                className={`size-2 rounded-full shadow ${online === false ? "bg-rose shadow-rose/50" : "bg-mint shadow-mint/50"}`}
+              />{" "}
+              {online === false ? "backend offline" : online === null ? "checking backend" : "backend online"}
             </span>
             <div className="grid size-10 place-items-center rounded-full bg-gradient-to-br from-ink to-brand-2 text-xs font-semibold text-on-brand">
               AR
@@ -279,6 +286,7 @@ function Dashboard() {
                     <button
                       type="button"
                       onClick={() => toggleTask(t.id)}
+                      disabled={busy !== null || loading}
                       aria-pressed={t.status === "done"}
                       className="flex w-full items-center gap-3 text-left"
                     >
@@ -315,12 +323,14 @@ function Dashboard() {
                     <div className="mt-4 flex gap-2">
                       <button
                         onClick={() => decide(ap.id, "approved")}
+                        disabled={busy !== null || loading}
                         className="flex-1 rounded-xl bg-gradient-to-br from-brand to-brand-2 px-4 py-2.5 text-sm font-semibold text-on-brand shadow-lg shadow-brand/30"
                       >
                         Approve
                       </button>
                       <button
                         onClick={() => decide(ap.id, "declined")}
+                        disabled={busy !== null || loading}
                         className="rounded-xl border border-line/70 bg-panel/50 px-4 py-2.5 text-sm font-medium text-ink-soft"
                       >
                         Decline
