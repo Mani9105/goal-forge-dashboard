@@ -137,9 +137,10 @@ function Dashboard() {
   const progress = run.result.progress;
   const days = extractDays(run);
   const dayText = new Set(days.map((d) => `${d.label}: ${d.detail}`.toLowerCase()));
-  const completedResults = withoutTaskEcho(run.result.completedSteps, run).filter(
-    (s) => !dayText.has(s.trim().toLowerCase()) && !/^\s*(?:[-*•]\s*)?day\s*\d/i.test(s),
-  );
+  const completedResults = withoutTaskEcho(
+    [...run.result.completedSteps, ...run.tasks.map((t) => t.result)],
+    run,
+  ).filter((s) => !dayText.has(s.trim().toLowerCase()));
   const nextSteps = withoutTaskEcho(run.result.nextSteps, run);
 
 
