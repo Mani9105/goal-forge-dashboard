@@ -40,6 +40,8 @@ export type GoalRun = {
     headline: string;
     note: string;
     confidence: number;
+    summary?: string;
+    completedSteps?: string[];
   };
 };
 
@@ -70,6 +72,16 @@ export const defaultRun: GoalRun = {
     headline: "$2,948",
     note: "under budget",
     confidence: 87,
+    summary: "Your goal has been completed through the planned steps below.",
+    completedSteps: [
+      "Understand the basics of Python",
+      "Practice coding exercises",
+      "Build projects",
+      "Read documentation and blogs",
+      "Participate in coding communities",
+      "Review and summarize weekly",
+      "Prepare for a final test",
+    ],
   },
 };
 

@@ -342,25 +342,51 @@ function Dashboard() {
             </section>
 
             <section className="panel-glass rounded-2xl p-6">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-soft">Final Result</h2>
-              <div className="mt-4 rounded-xl border border-line/70 bg-gradient-to-br from-panel/70 to-brand/5 p-4">
-                <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-soft">{run.result.label}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight">
-                  {run.result.headline}{" "}
-                  <span className="text-sm font-normal text-mint">{run.result.note}</span>
-                </p>
-                <div className="mt-4 flex items-center justify-between font-mono text-[11px] text-ink-soft">
-                  <span>Plan confidence</span>
-                  <span className="text-ink">{run.result.confidence}%</span>
-                </div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-brand to-mint transition-all duration-700"
-                    style={{ width: `${run.result.confidence}%` }}
-                  />
-                </div>
-              </div>
-            </section>
+  <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-soft">
+    Final Outcome
+  </h2>
+
+  <div className="mt-4 rounded-xl border border-mint/30 bg-gradient-to-br from-panel/70 to-mint/5 p-5">
+    <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-mint">
+      {run.result.label}
+    </p>
+
+    <p className="mt-2 text-xl font-semibold tracking-tight">
+      {run.result.headline}
+    </p>
+
+    <p className="mt-2 text-sm text-ink-soft">
+      {run.result.note}
+    </p>
+
+    <div className="mt-5 border-t border-line/60 pt-4">
+      <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+        Final Plan
+      </p>
+
+      <p className="mt-2 text-sm text-ink-soft">
+        {run.result.summary}
+      </p>
+
+      <ol className="mt-4 space-y-3">
+        {(run.result.completedSteps ?? run.plan.map(step => step.title)).map((step, i) => (
+          <li key={`${step}-${i}`} className="flex gap-3">
+            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-mint/15 font-mono text-[10px] text-mint">
+              {i + 1}
+            </span>
+            <p className="text-sm font-medium">{step}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+
+    <div className="mt-5 border-t border-line/60 pt-4">
+      <p className="text-sm font-medium text-mint">
+        ✓ Goal completed and verified
+      </p>
+    </div>
+  </div>
+</section>
           </div>
         </div>
       </div>
