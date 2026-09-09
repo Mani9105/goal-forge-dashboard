@@ -289,7 +289,7 @@ function Dashboard() {
             )}
           </section>
 
-          <section className="panel-glass h-fit rounded-2xl p-6 lg:col-span-4">
+          <section className="panel-glass max-h-[calc(100vh-8rem)] overflow-y-auto rounded-2xl p-6 lg:col-span-4">
             <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-soft">Final outcome</h2>
 
             {progress === 100 && (
