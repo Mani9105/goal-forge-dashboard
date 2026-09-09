@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { defaultRun, type GoalRun, type Status } from "@/lib/mock-data";
 import { api } from "@/lib/api";
-import { extractDays, headlineSummary, withoutTaskEcho } from "@/lib/outcome";
+import { extractDays, headlineSummary, synthesizeCompletedResults, withoutTaskEcho } from "@/lib/outcome";
 
 
 export const Route = createFileRoute("/")({
@@ -137,10 +137,9 @@ function Dashboard() {
   const progress = run.result.progress;
   const days = extractDays(run);
   const dayText = new Set(days.map((d) => `${d.label}: ${d.detail}`.toLowerCase()));
-  const completedResults = withoutTaskEcho(
-    [...run.result.completedSteps, ...run.tasks.map((t) => t.result)],
-    run,
-  ).filter((s) => !dayText.has(s.trim().toLowerCase()));
+  const completedResults = synthesizeCompletedResults(run).filter(
+    (s) => !dayText.has(s.trim().toLowerCase()),
+  );
   const nextSteps = withoutTaskEcho(run.result.nextSteps, run);
 
 
