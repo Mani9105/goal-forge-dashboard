@@ -48,12 +48,15 @@ function norm(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
 }
 
-/** Drop outcome lines that merely repeat a plan step title. */
+const EXECUTION_BOILERPLATE = /^execution completed for task/i;
+
+/** Drop outcome lines that merely repeat a plan step title or raw execution boilerplate. */
 export function withoutTaskEcho(items: string[], run: GoalRun): string[] {
   const titles = new Set(run.tasks.map((t) => norm(t.title)));
   const out: string[] = [];
   const seen = new Set<string>();
   for (const item of items) {
+    if (EXECUTION_BOILERPLATE.test(item)) continue;
     const key = norm(item);
     if (!key || titles.has(key) || seen.has(key)) continue;
     seen.add(key);
