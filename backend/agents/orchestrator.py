@@ -94,6 +94,8 @@ def generate_final_outcome(goal: str, plan) -> dict:
             "title": task.title,
             "description": task.description,
             "expected_outcome": task.expected_outcome,
+            "actual_result": getattr(task, "result", None),
+            "verified": getattr(task, "verified", False),
         })
 
     prompt = f"""

@@ -9,29 +9,29 @@ MAX_RETRIES = 2
 
 def requires_approval(task_title: str, task_description: str) -> bool:
     """
-    Detect tasks that may have consequential external effects.
+    Require human approval only for clearly consequential external actions.
     """
 
     text = f"{task_title} {task_description}".lower()
 
-    approval_keywords = [
-        "send",
-        "email",
+    approval_phrases = [
+        "send an email",
+        "send email",
         "delete",
         "purchase",
         "buy",
         "pay",
         "publish",
-        "post",
+        "post to",
         "submit",
         "book",
         "cancel",
         "invite",
-        "contact",
+        "contact a person",
         "change account",
     ]
 
-    return any(keyword in text for keyword in approval_keywords)
+    return any(phrase in text for phrase in approval_phrases)
 
 
 def run_task(state: GoalState, task_id: str) -> bool:
