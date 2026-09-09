@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { defaultRun, type GoalRun, type Status } from "@/lib/mock-data";
 import { api } from "@/lib/api";
-import { extractDays, headlineSummary, synthesizeCompletedResults } from "@/lib/outcome";
+import { extractDays, headlineSummary, synthesizeCompletedResults, withoutTaskEcho } from "@/lib/outcome";
 
 
 export const Route = createFileRoute("/")({
