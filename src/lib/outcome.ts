@@ -65,6 +65,42 @@ export function withoutTaskEcho(items: string[], run: GoalRun): string[] {
   return out;
 }
 
+/** Synthesize a short list of meaningful completed results from finished tasks.
+ *  Avoids raw execution boilerplate and task-title echoes; caps at 7 items. */
+export function synthesizeCompletedResults(run: GoalRun): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+
+  const add = (text: string) => {
+    if (!text || EXECUTION_BOILERPLATE.test(text)) return;
+    const key = norm(text);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(text.trim());
+  };
+
+  // Prefer the task's own expected outcome / result, combined with its title.
+  for (const t of run.tasks) {
+    if (t.status !== "done" || t.failed) continue;
+    if (t.expectedOutcome) {
+      add(`${t.title} — ${t.expectedOutcome}`);
+    } else if (t.result && !EXECUTION_BOILERPLATE.test(t.result)) {
+      add(`${t.title}: ${t.result}`);
+    } else if (t.description) {
+      add(`${t.title}: ${t.description}`);
+    } else {
+      add(t.title);
+    }
+  }
+
+  // Fall back to backend-provided completed steps if they add new information.
+  for (const step of run.result.completedSteps) {
+    add(step);
+  }
+
+  return out.slice(0, 7);
+}
+
 /** Summary text with any day lines removed, so it reads as a real conclusion. */
 export function headlineSummary(run: GoalRun): string {
   const kept = toLines(run.result.summary).filter((l) => !DAY_RE.test(l));
