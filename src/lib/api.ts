@@ -1,10 +1,6 @@
 import { type GoalRun, type Status } from "@/lib/mock-data";
 
-const DEFAULT_BASE_URL = "https://ripe-chicken-tell.loca.lt";
-
-const CONFIGURED = (import.meta.env["VITE_API_BASE_URL"] as string | undefined)?.replace(/\/+$/, "") ?? "";
-
-export const BASE_URL = CONFIGURED || DEFAULT_BASE_URL;
+const BASE_URL = (import.meta.env["VITE_API_BASE_URL"] as string | undefined)?.replace(/\/+$/, "") ?? "";
 
 /** Plan generation runs a local model, so it needs a long ceiling; everything else is quick. */
 const GENERATE_TIMEOUT_MS = 180_000;
