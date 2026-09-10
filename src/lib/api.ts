@@ -1,6 +1,6 @@
 import { type GoalRun, type Status } from "@/lib/mock-data";
 
-const DEFAULT_BASE_URL = "https://ominous-disco-97xxrx65vxpjh76g4-8000.app.github.dev";
+const DEFAULT_BASE_URL = "https://ripe-chicken-tell.loca.lt";
 
 const CONFIGURED = (import.meta.env["VITE_API_BASE_URL"] as string | undefined)?.replace(/\/+$/, "") ?? "";
 
