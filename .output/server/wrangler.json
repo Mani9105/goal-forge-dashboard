@@ -6,9 +6,7 @@
     "directory": "../public"
   },
   "name": "mani9105-goal-forge-dashboard",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
+  "compatibility_flags": [],
   "no_bundle": true,
   "rules": [
     {
