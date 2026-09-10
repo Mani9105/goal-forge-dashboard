@@ -16,6 +16,9 @@ export class ApiError extends Error {
 }
 
 async function request(path: string, init?: RequestInit, timeoutMs = ACTION_TIMEOUT_MS): Promise<unknown> {
+  if (!BASE_URL) {
+    throw new ApiError("VITE_API_BASE_URL is not configured. Set it in your environment to point to the backend.");
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
