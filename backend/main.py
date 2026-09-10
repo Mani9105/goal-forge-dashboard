@@ -7,17 +7,8 @@ app = FastAPI(title="GoalForge API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://goal-forge-dashboard.vercel.app"],
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# The dashboard is served from a different origin, so browser calls need CORS.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origin_regex=r"https?://(localhost(:\d+)?|.*\.lovable\.app|.*\.lovableproject\.com)",
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
