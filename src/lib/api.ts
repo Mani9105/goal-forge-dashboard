@@ -1,4 +1,4 @@
-import { type ActivityItem, type GoalRun, type Status } from "@/lib/mock-data";
+import { type GoalRun, type Status } from "@/lib/mock-data";
 
 const DEFAULT_BASE_URL = "https://ominous-disco-97xxrx65vxpjh76g4-8000.app.github.dev";
 
@@ -80,6 +80,10 @@ function arr(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? value.map(rec) : [];
 }
 
+function strArr(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((v) => str(v)).filter(Boolean) : [];
+}
+
 // backend TaskStatus -> UI Status
 function toStatus(value: unknown): Status {
   switch (String(value ?? "").toLowerCase()) {
@@ -96,90 +100,54 @@ function toStatus(value: unknown): Status {
   }
 }
 
-function progressFor(status: Status, verified: boolean): number {
-  if (status === "done") return verified ? 100 : 95;
-  if (status === "running") return 55;
-  if (status === "awaiting") return 70;
-  return 0;
-}
-
-const mintTypes = new Set(["task_completed", "verification", "plan_created"]);
-const amberTypes = new Set(["approval_required", "recovery"]);
-
-function toneFor(type: string): ActivityItem["tone"] {
-  if (mintTypes.has(type)) return "mint";
-  if (amberTypes.has(type)) return "amber";
-  return "brand";
-}
-
 /** Map a FastAPI GoalResponse onto the shape the dashboard renders. */
 export function normalizeRun(raw: unknown, fallbackGoal: string): GoalRun {
   const data = rec(raw);
   const plan = rec(data["plan"]);
-  const backendTasks = arr(plan["tasks"]);
   const approval = rec(data["approval"]);
 
-  const tasks = backendTasks.map((t, i) => {
-    const id = str(t["id"], `task-${i + 1}`);
-    const status = toStatus(t["status"]);
-    const failed = String(t["status"] ?? "") === "failed";
-    return {
-      id,
-      title: str(t["title"], `Task ${i + 1}`),
-      description: str(t["description"]),
-      expectedOutcome: str(t["expected_outcome"]),
-      result: str(t["result"]),
-      verified: t["verified"] === true,
-      failed,
-      status,
-    };
-  });
+  const tasks = arr(plan["tasks"]).map((t, i) => ({
+    id: str(t["id"], `task-${i + 1}`),
+    title: str(t["title"], `Task ${i + 1}`),
+    description: str(t["description"]),
+    expectedOutcome: str(t["expected_outcome"]),
+    result: str(t["result"]),
+    verified: t["verified"] === true,
+    failed: String(t["status"] ?? "") === "failed",
+    status: toStatus(t["status"]),
+  }));
 
-  const completed = tasks.filter((t) => t.status === "done").length;
-  const confidence = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
+  const finished = tasks.filter((t) => t.status === "done").length;
+  const total = tasks.length;
+  const approvalPending = approval["required"] === true;
   const objective = str(plan["objective"]);
-  const resultText = str(data["result"]);
+
+  // The backend may return result as either a plain string or an object with
+  // summary, completed_steps and next_steps.
+  const resultObj = typeof data["result"] === "string" ? {} : rec(data["result"]);
+  const resultText = typeof data["result"] === "string" ? str(data["result"]) : str(resultObj["summary"]);
+  const summary = resultText || objective || "";
 
   return {
     goal: str(data["goal"], fallbackGoal),
-    chips: [
-      objective ? "objective set" : "",
-      tasks.length ? `${tasks.length} tasks` : "",
-      approval["required"] === true ? "approval pending" : "",
-    ].filter(Boolean),
-    plan: tasks.map((t) => ({
-      id: t.id,
-      title: t.title,
-      status: t.status,
-      progress: progressFor(t.status, t.verified),
-    })),
-    activity: arr(data["activities"]).map((a, i) => {
-      const type = str(a["type"], "event");
-      return {
-        id: `a${i + 1}`,
-        agent: "GoalForge",
-        message: str(a["message"]),
-        time: `#${i + 1}`,
-        kind: type.replace(/_/g, " "),
-        tone: toneFor(type),
-      };
-    }),
-    tasks: tasks.map((t) => ({ id: t.id, title: t.title, status: t.status })),
-    approvals:
-      approval["required"] === true
-        ? [
-            {
-              id: str(approval["task_id"], "approval"),
-              title: "Human approval required",
-              detail: str(approval["reason"], "The agent paused before a consequential action."),
-            },
-          ]
-        : [],
+    tasks,
+    approvals: approvalPending
+      ? [
+          {
+            id: str(approval["task_id"], "approval"),
+            title: "Approval needed",
+            detail: str(approval["reason"], "The agent paused before a consequential step."),
+          },
+        ]
+      : [],
     result: {
-      label: objective ? "Objective" : "Projected outcome",
-      headline: resultText || objective || "—",
-      note: tasks.length ? `${completed}/${tasks.length} tasks complete` : "",
-      confidence,
+      headline: summary,
+      note: total ? `${finished} of ${total} steps complete` : "",
+      // Reaches exactly 100% once every step is done; never sticks below.
+      progress: total ? Math.round((finished / total) * 100) : 0,
+      summary,
+      completedSteps: strArr(resultObj["completed_steps"]),
+      nextSteps: strArr(resultObj["next_steps"]),
     },
   };
 }
@@ -211,7 +179,25 @@ export const api = {
       { method: "POST" },
       GENERATE_TIMEOUT_MS,
     );
-    return normalizeRun(payload, goal);
+    const run = normalizeRun(payload, goal);
+    // The backend does not always flip the step it just ran; treat a successful
+    // call as completion unless it is explicitly waiting on a human decision.
+    const tasks = run.tasks.map((t) =>
+      t.id === taskId && t.status !== "awaiting"
+        ? { ...t, status: "done" as const, verified: true, failed: false }
+        : t,
+    );
+    const finished = tasks.filter((t) => t.status === "done").length;
+    const total = tasks.length;
+    return {
+      ...run,
+      tasks,
+      result: {
+        ...run.result,
+        note: total ? `${finished} of ${total} steps complete` : run.result.note,
+        progress: total ? Math.round((finished / total) * 100) : run.result.progress,
+      },
+    };
   },
 
   decideApproval: async (verdict: "approved" | "declined", goal: string): Promise<GoalRun> => {
