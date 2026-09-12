@@ -80,6 +80,8 @@ The system maintains state throughout the workflow so that the user can see what
 
 ## Architecture
 
+![GoalForge Architecture](docs/architecture.png)
+
 ```text
 ┌─────────────────────────────┐
 │       GoalForge UI          │
