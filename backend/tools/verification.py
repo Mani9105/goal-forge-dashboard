@@ -1,3 +1,7 @@
+from strands import tool
+
+
+@tool
 def verify_task(
     task_title: str,
     expected_outcome: str,
