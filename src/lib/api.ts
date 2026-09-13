@@ -3,7 +3,7 @@ import { type GoalRun, type Status } from "@/lib/mock-data";
 const BASE_URL = (import.meta.env["VITE_API_BASE_URL"] as string | undefined)?.replace(/\/+$/, "") ?? "";
 
 /** Plan generation runs a local model, so it needs a long ceiling; everything else is quick. */
-const GENERATE_TIMEOUT_MS = 180_000;
+const GENERATE_TIMEOUT_MS = 600_000;
 const ACTION_TIMEOUT_MS = 60_000;
 
 export class ApiError extends Error {
